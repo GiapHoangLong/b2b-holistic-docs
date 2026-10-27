@@ -3191,25 +3191,25 @@ measure 'DI_table' =
       {
         id: 'md_month_year',
         num: '01',
-        title: 'Thanh Chọn Tháng & Năm (Jan..Dec, 2024..2026)',
+        title: 'Thanh Chọn Tháng & Năm (Xem theo Tháng lẻ, Quý, YTD hoặc Full Year 2024–2026)',
         type: 'Month & Year Slicer',
         x: 4.7, y: 116.4, w: 1982.9, h: 49.7,
         bizMeaning: `
           <p><strong>Thanh chọn nhanh Tháng và Năm cho toàn trang Market demand:</strong></p>
           <ul>
-            <li>Khi bạn chọn một tháng đã kết thúc, toàn bộ số liệu được lấy từ báo cáo <strong>Chốt tháng (Monthly)</strong> của Amazon.</li>
-            <li>Khi bạn chọn tháng hiện tại đang chạy, hệ thống tự động lấy số liệu cộng dồn từ báo cáo <strong>Hàng ngày (Daily)</strong> cho doanh số / số lượng bán / lượt xem, và lấy số của <strong>ngày mới nhất</strong> cho các chỉ số tồn kho.</li>
+            <li><strong>Chọn nhiều tháng / cả năm (<code>Select all</code>):</strong> Hỗ trợ chọn nhiều tháng cùng lúc (ví dụ Quý Q1–Q4, YTD) hoặc bấm <code>Select all</code> / bỏ chọn tháng để xem trọn năm <code>2024, 2025, 2026</code> và so sánh trực tiếp với cùng kỳ năm ngoái (<code>LY</code>).</li>
+            <li><strong>Dữ liệu Sales & Traffic đã khử trùng 100%:</strong> Bảng <code>fact_market_demand</code> tự động khử trùng theo <code>DISTINCT ON (country, asin, end_date)</code> trên bảng nguồn <code>y4a_dwa_amz_avc_sls_rpt</code> trước khi gom nhóm theo tháng.</li>
           </ul>
         `,
-        bizFormula: `Lọc dữ liệu theo tháng/năm trên bảng lịch CALENDAR1 và so sánh với cùng kỳ năm ngoái (LY).`,
+        bizFormula: `Lọc dữ liệu theo tháng/năm trên bảng lịch CALENDAR1, tự động đối chiếu cùng kỳ năm ngoái (LY).`,
         bizSource: [
           { label: 'Bảng lịch', val: 'Bảng CALENDAR1 — cột monthnameshort và year.' }
         ],
         devMeta: {
           visualId: '9668db50fa29702028b8, 3c58f8092d1b9607e1bc (slicer)',
           fields: 'CALENDAR1[monthnameshort], CALENDAR1[year]',
-          dax: `-- Lọc trực tiếp bảng CALENDAR1.`,
-          sql: `-- Nối 1-N với fact_market_demand[end_date].`
+          dax: `// Slicer trực tiếp trên cột CALENDAR1[monthnameshort] (multi-select) và CALENDAR1[year]`,
+          sql: `-- Nối 1-N với fact_market_demand[end_date] (lịch sử từ 2023-01-01, đã khử duplicate DISTINCT ON (country, asin, end_date) trên y4a_dwa_amz_avc_sls_rpt).`
         }
       },
       {
@@ -3449,9 +3449,8 @@ Return rate (%) = ---------------------------------
           </ul>
           <div class="color-logic-box">
             <div class="color-logic-title">🎨 Quy tắc màu sắc</div>
-            • <span class="color-dot dot-green"></span><strong>Xanh (✓):</strong> <code>Net PPM &lt;= LY</code><br/>
-            • <span class="color-dot dot-red"></span><strong>Đỏ (!):</strong> <code>Net PPM &gt; LY</code><br/>
-            <em>(Lưu ý: Thẻ này đang đặt chiều màu ngược — thực tế Net PPM cao hơn LY là tốt)</em>
+            • <span class="color-dot dot-green"></span><strong>Xanh (✓):</strong> <code>Net PPM &gt;= LY</code><br/>
+            • <span class="color-dot dot-red"></span><strong>Đỏ (!):</strong> <code>Net PPM &lt; LY</code>
           </div>
         `,
         bizFormula: `              Tổng tiền lợi nhuận Net PPM ($)
@@ -4044,22 +4043,32 @@ FROM y4a_datamart.fact_spreetail_sales_channel`
       {
         id: 'sp_card_net_rev',
         num: '03',
-        title: 'Net Revenue ($) — Doanh thu thuần sau khi trừ tiền hoàn trả hàng',
+        title: 'Base Item Cost ($) — Tổng giá vốn hàng bán qua kênh Spreetail',
         type: 'KPI Card + Sparkline',
         x: 294, y: 160, w: 256, h: 95,
         bizMeaning: `
-          <p><strong>Ô này cho biết:</strong> Doanh thu thực thu của kênh Spreetail sau khi đã lấy tổng doanh số <code>GMV ($)</code> trừ đi số tiền hoàn lại cho khách trả hàng (<code>Refund Amount</code>).</p>
+          <p><strong>Ô này cho biết:</strong> Tổng giá vốn tiền hàng (<code>Base Item Cost $</code>) của các sản phẩm đã xuất bán qua kênh Spreetail trong kỳ đang chọn, giúp đối chiếu trực tiếp với tổng doanh số bán lẻ <code>GMV ($)</code> ở ô bên trái.</p>
+          <p>Đường biểu đồ nhỏ bên phải thẻ vẽ xu hướng <code>Base Item Cost ($)</code> theo từng tuần.</p>
         `,
-        bizFormula: `Net Revenue ($) = Tổng doanh số GMV ($)  -  Số tiền hoàn trả khách hàng (Refund Amount $)`,
+        bizFormula: `Base Item Cost ($) = Tổng giá vốn hàng bán (base_item_cost) trên tất cả các sàn bán lẻ của Spreetail`,
         bizSource: [
           { label: 'Báo cáo gốc', val: 'Spreetail Partner Portal — Sales Channel Report.' },
-          { label: 'Bảng & Cột lấy số', val: 'Bảng fact_spreetail_sales_channel — cột net_revenue (measure [Spreetail Net Revenue]).' }
+          { label: 'Bảng & Cột lấy số', val: 'Bảng fact_spreetail_sales_channel — cột base_item_cost (measure [Spreetail Base Cost]).' }
         ],
         devMeta: {
           visualId: '05efe18e049a1b1244db (cardVisual) + sparkline_net_rev',
-          fields: 'measure_spreetail[Spreetail Net Revenue]',
-          dax: `measure 'Spreetail Net Revenue' = SUM(fact_spreetail_sales_channel[net_revenue])`,
-          sql: `net_revenue = gross_merchandise_value - COALESCE(refund_amount, 0)`
+          fields: 'measure_spreetail[Spreetail Base Cost], CALENDAR1[week_start_date]',
+          dax: `measure 'Spreetail Base Cost' =
+    IF(
+        ISFILTERED(fact_spreetail_inventory[part_number]),
+        CALCULATE(
+            SUM(fact_spreetail_sales_channel[base_item_cost]),
+            TREATAS(VALUES(fact_spreetail_inventory[part_number]), fact_spreetail_sales_channel[part_number])
+        ),
+        SUM(fact_spreetail_sales_channel[base_item_cost])
+    )`,
+          sql: `SELECT order_date, part_number, sales_channel, gross_merchandise_value, base_item_cost, shipped_units
+FROM y4a_datamart.fact_spreetail_sales_channel`
         }
       },
       {
@@ -4277,30 +4286,33 @@ ACOS % = ------------------------------------
       {
         id: 'sp_card_amz_share',
         num: '13',
-        title: '% AMZ GMV Share — Tỷ trọng doanh số từ sàn Amazon.com trong tổng doanh số của Spreetail',
+        title: '% AMZ GMV Share & Conversion Rate % (CVR %) — Tỷ trọng sàn Amazon.com & Tỷ lệ chuyển đổi đơn hàng quảng cáo',
         type: 'KPI Card + Sparkline',
         x: 1505, y: 265, w: 390, h: 95,
         bizMeaning: `
-          <p><strong>Ô này cho biết:</strong> Mặc dù Spreetail đăng bán hàng của Yes4All trên nhiều sàn (Amazon, Target, Walmart, eBay, Lowes...), nhưng riêng sàn <strong>Amazon.com</strong> đang chiếm bao nhiêu phần trăm (%) trong tổng doanh số của Spreetail (trên ảnh là <code>91.4%</code>).</p>
-          <p>Chỉ số này giúp theo dõi mức độ phụ thuộc vào sàn Amazon so với tốc độ mở rộng sang các sàn mới như Target hay Walmart.</p>
+          <p><strong>Hai thẻ cuối hàng 2 của Phần 1 cho biết:</strong></p>
+          <ul>
+            <li><strong><code>% AMZ GMV Share</code>:</strong> Tỷ trọng doanh số từ riêng sàn <strong>Amazon.com</strong> trong tổng doanh số của Spreetail trên mọi sàn.</li>
+            <li><strong><code>Conversion Rate % (CVR %)</code>:</strong> Tỷ lệ chuyển đổi đơn hàng từ quảng cáo trên Spreetail — cứ 100 lượt khách bấm vào quảng cáo (<code>Clicks</code>) thì tạo ra bao nhiêu đơn hàng mua thành công (<code>Ad Orders</code>).</li>
+          </ul>
         `,
-        bizFormula: `                  Doanh số GMV trên sàn "Amazon.com"
-% AMZ GMV Share = ----------------------------------
-                  Tổng GMV của Spreetail trên mọi sàn`,
+        bizFormula: `                     Tổng số đơn hàng từ quảng cáo (SUM ad_orders)
+Conversion Rate % = -----------------------------------------------
+                    Tổng số lượt nhấp chuột quảng cáo (SUM clicks)`,
         bizSource: [
-          { label: 'Báo cáo gốc', val: 'Spreetail Partner Portal — Sales Channel Report.' },
-          { label: 'Bảng & Cột lấy số', val: 'Bảng fact_spreetail_sales_channel — lọc sales_channel = "Amazon.com" chia cho tổng GMV.' }
+          { label: 'Báo cáo gốc', val: 'Spreetail Partner Portal — Sales Channel Report & Advertising Report (spreetail_advertising).' },
+          { label: 'Bảng & Cột lấy số', val: 'measure [Spreetail AMZ GMV Contribution %] và measure [Spreetail Ad Conversion Rate %] (từ fact_spreetail_advertising[ad_orders] / [clicks]).' }
         ],
         devMeta: {
-          visualId: 'card_amz_contribution (cardVisual) + sparkline_amz_share',
-          fields: 'measure_spreetail[Spreetail AMZ GMV Contribution %]',
-          dax: `measure 'Spreetail AMZ GMV Contribution %' =
+          visualId: 'card_amz_contribution + sparkline_amz_share, card_ad_cvr + sparkline_ad_cvr',
+          fields: 'measure_spreetail[Spreetail AMZ GMV Contribution %], measure_spreetail[Spreetail Ad Conversion Rate %]',
+          dax: `measure 'Spreetail Ad Conversion Rate %' =
     DIVIDE(
-        CALCULATE([Spreetail GMV], fact_spreetail_sales_channel[sales_channel] = "Amazon.com"),
-        CALCULATE([Spreetail GMV], ALLSELECTED(fact_spreetail_sales_channel[sales_channel])),
-        0
+        SUM(fact_spreetail_advertising[ad_orders]),
+        SUM(fact_spreetail_advertising[clicks]),
+        BLANK()
     )`,
-          sql: `-- Tính động bằng DAX.`
+          sql: `SELECT date, sku, spend, sales, impressions, clicks, ad_orders FROM y4a_sop_ops.spreetail_advertising`
         }
       },
       {
@@ -4349,31 +4361,36 @@ ACOS % = ------------------------------------
       {
         id: 'sp_chart_monthly_st',
         num: '16',
-        title: 'Biểu Đồ Trái: Monthly Sell-Through (Tốc độ tiêu thụ hàng tồn kho 3 tháng của Spreetail)',
-        type: 'Combo Chart',
+        title: 'Biểu Đồ Trái: Monthly Sell-Through (Tồn kho On-Hand + Hàng đang về Incoming & Tốc độ tiêu thụ 3M theo chuẩn AMZ)',
+        type: 'Combo Chart (Stacked Column + Line)',
         x: 25, y: 750, w: 920, h: 400,
         bizMeaning: `
-          <p><strong>Biểu đồ kết hợp Cột &amp; Đường này cho biết:</strong> Tốc độ bán thoát hàng trong 3 tháng của kênh Spreetail qua từng tháng báo cáo:</p>
+          <p><strong>Biểu đồ kết hợp Cột Chồng 2 Màu &amp; Đường này cho biết:</strong> Quy mô nguồn hàng và tốc độ bán thoát hàng trong 3 tháng (Rolling 3M) của kênh Spreetail qua từng tháng báo cáo:</p>
           <ul>
-            <li><strong>Cột Xanh đậm (<code>Base Inventory + Incoming</code>):</strong> Tổng lượng hàng tồn kho gốc cộng với lượng hàng đang nhập thêm vào kho Spreetail (mẫu số).</li>
-            <li><strong>Cột Xanh nhạt (<code>Last 3M Net Shipped</code>):</strong> Tổng lượng sản phẩm đã xuất bán ròng trong 3 tháng gần nhất (tử số).</li>
-            <li><strong>Đường màu Cam (<code>Sell-Through 3M %</code>):</strong> Tỷ lệ % lấy lượng hàng xuất bán 3 tháng chia cho tổng lượng hàng có sẵn.</li>
+            <li><strong>Cột dưới Xanh Navy (<code>On-Hand</code>):</strong> Lượng hàng tồn kho thực tế đang nằm sẵn trên kệ kho của Spreetail cuối tháng (<code>ending_inventory</code>).</li>
+            <li><strong>Cột trên Xanh Ngọc (<code>Incoming</code>):</strong> Lượng hàng đang chuẩn bị đổ thêm vào kho Spreetail, gồm hàng đã đặt PO (<code>units_on_order</code>) cộng với hàng đang đi trên đường (<code>units_in_transit</code>).</li>
+            <li><strong>Đường màu Cam (<code>Sell-Through 3M %</code> — Phương án A1 chuẩn Amazon):</strong> Tỷ lệ % lấy tổng lượng hàng xuất bán ròng trong 3 tháng chia cho tổng nguồn cung thực tế có trên kệ trong 3 tháng (gồm tồn kho đầu kỳ cách đây 3 tháng cộng tổng lượng hàng thực tế nhập thêm vào kho trong 3 tháng đó).</li>
           </ul>
         `,
-        bizFormula: `                     Số lượng bán ròng 3 tháng (3M)
-Sell-Through 3M % = --------------------------------
-                     Tồn kho gốc + Hàng đang nhập về`,
+        bizFormula: `Incoming (Cột xanh ngọc) = Units On Order + Units In Transit
+Actual Received tháng M  = MAX(0, Ending_Inven[M] - Ending_Inven[M-1] + Net_Shipped[M])
+
+                           Tổng Net Shipped trong 3 tháng (M-2, M-1, M)
+Sell-Through 3M % (A1)  = --------------------------------------------------------------
+                          Tồn đầu kỳ cách 3 tháng (Ending[M-3]) + Tổng Actual Received 3M`,
         bizSource: [
-          { label: 'Báo cáo gốc', val: 'Spreetail Partner Portal — Báo cáo Sell-Through 3M.' },
-          { label: 'Bảng & Cột lấy số', val: 'Bảng fact_spreetail_sell_through — measure [Spreetail ST Base Inventory], [Spreetail ST Net Shipped Units], [Spreetail Sell-Through 3M %].' }
+          { label: 'Báo cáo gốc', val: 'Spreetail Partner Portal — Báo cáo Sell-Through 3M (spreetail_sell_through).' },
+          { label: 'Bảng & Cột lấy số', val: 'Bảng fact_spreetail_sell_through — các measure [Spreetail ST On-Hand], [Spreetail ST Incoming] và [Spreetail Sell-Through 3M %].' }
         ],
         devMeta: {
-          visualId: 'chart_spreetail_sell_through (lineClusteredColumnComboChart)',
-          fields: 'fact_spreetail_sell_through[report_month], measure_spreetail[Spreetail ST Base Inventory], measure_spreetail[Spreetail ST Net Shipped Units], measure_spreetail[Spreetail Sell-Through 3M %]',
-          dax: `measure 'Spreetail Sell-Through 3M %' =
-    DIVIDE([Spreetail ST Net Shipped Units], [Spreetail ST Base Inventory], 0)`,
-          sql: `SELECT report_month, part_number, base_inventory_plus_incoming, last_3m_net_shipped
-FROM y4a_datamart.fact_spreetail_sell_through`
+          visualId: 'chart_spreetail_sell_through (lineStackedColumnComboChart)',
+          fields: 'fact_spreetail_sell_through[report_date], measure_spreetail[Spreetail ST On-Hand], measure_spreetail[Spreetail ST Incoming], measure_spreetail[Spreetail Sell-Through 3M %]',
+          dax: `measure 'Spreetail ST On-Hand' = SUM(fact_spreetail_sell_through[ending_inventory])
+measure 'Spreetail ST Incoming' = SUM(fact_spreetail_sell_through[units_on_order]) + SUM(fact_spreetail_sell_through[units_in_transit])
+-- [Spreetail Sell-Through 3M %] tính theo Phương án A1 đồng bộ 100% logic Amazon:
+-- DIVIDE(Shipped_3M, BeginInven_3M + ActualReceived_3M, BLANK())`,
+          sql: `SELECT report_date, sku, ending_inventory, units_on_order, units_in_transit, net_shipped_units
+FROM y4a_sop_ops.spreetail_sell_through`
         }
       },
       {
@@ -4506,39 +4523,36 @@ FROM y4a_datamart.fact_spreetail_sell_through`
       {
         id: 'sp_card_dos',
         num: '21',
-        title: 'Avg Days of Supply (Weighted by QOH) — Trung bình số ngày tồn kho đủ bán tại kho Spreetail',
+        title: 'Avg Days of Supply & In-Stock Rate (Network / Node) — Số ngày đủ bán & Tỷ lệ còn hàng Toàn mạng / Từng kho bang',
         type: 'Inventory KPI Card',
         x: 563, y: 1680, w: 256, h: 95,
         bizMeaning: `
-          <p><strong>Ô này cho biết:</strong> Lượng hàng tồn kho hiện có tại mạng lưới kho của Spreetail ước tính <strong>đủ bán trong bao nhiêu ngày (<code>Days of Supply</code>)</strong>.</p>
-          <p><strong>Cách tính bình quân gia quyền theo số lượng tồn kho (Weighted by QOH):</strong> Để tránh việc một vài mã hàng lẻ có tồn kho rất ít nhưng số ngày tồn lên tới hàng chục nghìn ngày làm sai lệch số trung bình chung, hệ thống nhân số ngày <code>Days of Supply</code> của từng dòng kho với chính số lượng tồn kho <code>Quantity on Hand (QOH)</code> của dòng đó rồi chia cho tổng tồn kho toàn mạng lưới.</p>
+          <p><strong>Cụm thẻ sức khỏe tồn kho Phần 2 này cho biết:</strong></p>
+          <ul>
+            <li><strong><code>Avg Days of Supply (Weighted by QOH)</code>:</strong> Trung bình số ngày tồn kho đủ bán tại mạng lưới kho của Spreetail (bình quân gia quyền theo số lượng tồn kho <code>QOH</code>).</li>
+            <li><strong><code>In-Stock Rate (Network)</code>:</strong> Tỷ lệ % các mã hàng đang kinh doanh tích cực (<code>procurement_status = "Replenish"</code>) có tổng tồn kho khả dụng trên toàn hệ thống lớn hơn 0 (<code>Network QOH &gt; 0</code>) — đo lường khách mua trên sàn có đặt hàng được hay bị hết hàng toàn quốc.</li>
+            <li><strong><code>In-Stock Rate (Node)</code>:</strong> Tỷ lệ % các điểm kho bang trong 7 kho chính của Spreetail (<code>GA, IN, NE, NV, PA, TX, WA</code>) có sẵn hàng trên kệ (<code>QOH tại bang &gt; 0</code>) — đo độ phủ hàng từng vùng để đảm bảo giao nhanh Prime 1–2 ngày.</li>
+          </ul>
         `,
-        bizFormula: `                        SUM( Days of Supply * Quantity on Hand )
-Weighted DOS (by QOH) = ----------------------------------------
-                                 SUM( Quantity on Hand )`,
+        bizFormula: `                            Số mã SKU "Replenish" có Tổng QOH toàn mạng > 0
+In-Stock Rate (Network) = ---------------------------------------------------
+                          Tổng số mã SKU "Replenish" đang mở bán tại ngày chốt
+
+                            Số cặp (SKU x Kho bang) có QOH tại kho bang đó > 0
+In-Stock Rate (Node)    = ------------------------------------------------------
+                          Tổng số cặp (SKU x Kho bang) của các mã "Replenish"`,
         bizSource: [
-          { label: 'Báo cáo gốc', val: 'Spreetail Partner Portal — Warehouse Inventory Report.' },
-          { label: 'Bảng & Cột lấy số', val: 'Bảng fact_spreetail_inventory — cột warehouse_days_of_supply và warehouse_quantity_on_hand (measure [Spreetail Days of Supply]).' }
+          { label: 'Báo cáo gốc', val: 'Spreetail Partner Portal — Warehouse Inventory Report (spreetail_warehouse_inventory).' },
+          { label: 'Bảng & Cột lấy số', val: 'Bảng fact_spreetail_inventory — các measure [Spreetail Days of Supply], [Spreetail In-Stock Rate Network %] và [Spreetail In-Stock Rate Node %].' }
         ],
         devMeta: {
-          visualId: '5234c523b96ac372b9f3 (cardVisual) + sparkline_dos',
-          fields: 'measure_spreetail[Spreetail Days of Supply]',
-          dax: `measure 'Spreetail Days of Supply' =
-    VAR PeriodLastDate = MAX(fact_spreetail_inventory[snapshot_date])
-    VAR FilteredData =
-        FILTER(
-            fact_spreetail_inventory,
-            fact_spreetail_inventory[snapshot_date] = PeriodLastDate
-                && NOT(ISBLANK(fact_spreetail_inventory[warehouse_days_of_supply]))
-                && fact_spreetail_inventory[warehouse_quantity_on_hand] > 0
-        )
-    VAR WeightedSum =
-        SUMX(FilteredData, fact_spreetail_inventory[warehouse_days_of_supply] * fact_spreetail_inventory[warehouse_quantity_on_hand])
-    VAR TotalUnits =
-        SUMX(FilteredData, fact_spreetail_inventory[warehouse_quantity_on_hand])
-    RETURN
-        IF(ISBLANK(PeriodLastDate), BLANK(), DIVIDE(WeightedSum, TotalUnits, BLANK()))`,
-          sql: `SELECT snapshot_date, part_number, warehouse_state, warehouse_days_of_supply, warehouse_quantity_on_hand
+          visualId: '5234c523b96ac372b9f3 + sparkline_dos, card_instock_network + sparkline_instock_network, card_instock_node + sparkline_instock_node',
+          fields: 'measure_spreetail[Spreetail Days of Supply], measure_spreetail[Spreetail In-Stock Rate Network %], measure_spreetail[Spreetail In-Stock Rate Node %]',
+          dax: `-- Lọc danh mục đang kinh doanh: procurement_status = "Replenish", NOT(ISBLANK(stock_position_bod)), warehouse_state IN {"GA","IN","NE","NV","PA","TX","WA"}
+measure 'Spreetail In-Stock Rate Network %' = DIVIDE(InStockSkus, TotalActiveSkus, BLANK())
+measure 'Spreetail In-Stock Rate Node %'    = DIVIDE(InStockNodes, TotalActiveNodes, BLANK())`,
+          sql: `SELECT snapshot_date, part_number, warehouse_state, procurement_status, stock_position_bod,
+       warehouse_days_of_supply, warehouse_quantity_on_hand
 FROM y4a_sop_ops.spreetail_warehouse_inventory`
         }
       },
@@ -4975,6 +4989,13 @@ LEFT JOIN y4a_datamart.dim_product p ON a.sku = p.sku`
     const WHATS_NEW_BY_PAGE = {
       p1_po_di: [
         {
+          tag: 'Added',
+          tagClass: 'tag-added',
+          date: '2026-10-26',
+          title: 'Mở khóa chọn nhiều tháng / Full Year (2024–2026) cho PO DI operation (Order Date & Ship Date)',
+          desc: 'Cho phép chọn nhiều tháng cùng lúc hoặc bỏ chọn tháng trên thanh Month và mở khóa đầy đủ 3 năm 2024, 2025, 2026 trên bộ lọc Year.'
+        },
+        {
           tag: 'Fixed',
           tagClass: 'tag-fixed',
           date: '2026-09-28',
@@ -4990,6 +5011,13 @@ LEFT JOIN y4a_datamart.dim_product p ON a.sku = p.sku`
         }
       ],
       p2_po_wh: [
+        {
+          tag: 'Added',
+          tagClass: 'tag-added',
+          date: '2026-10-26',
+          title: 'Mở khóa chọn nhiều tháng / Full Year (2024–2026) cho PO WH operation (Order Date & Ship Date)',
+          desc: 'Cho phép chọn nhiều tháng cùng lúc hoặc bỏ chọn tháng trên thanh Month và mở khóa đầy đủ 3 năm 2024, 2025, 2026 đồng bộ trên cả 2 chế độ Order Creation Date và Ship Date.'
+        },
         {
           tag: 'Fixed',
           tagClass: 'tag-fixed',
@@ -5057,6 +5085,13 @@ LEFT JOIN y4a_datamart.dim_product p ON a.sku = p.sku`
         {
           tag: 'Fixed',
           tagClass: 'tag-fixed',
+          date: '2026-10-27',
+          title: 'Khử trùng dữ liệu Sales & Traffic (y4a_dwa_amz_avc_sls_rpt), Mở khóa xem Full Year (2024–2026) & Đổi đúng chiều màu Net PPM',
+          desc: 'Khử duplicate theo DISTINCT ON (country, asin, end_date) trên bảng nguồn y4a_dwa_amz_avc_sls_rpt giúp đưa GMV 2024 từ $246.26M về đúng $123.13M và GMV 2025 từ $198.85M về đúng $113.94M; cho phép chọn nhiều tháng / Select all trên thanh Tháng; sửa chiều màu thẻ Net PPM sang Positive (Net PPM >= LY hiển thị màu Xanh).'
+        },
+        {
+          tag: 'Fixed',
+          tagClass: 'tag-fixed',
           date: '2026-10-07',
           title: 'Quy đổi tỷ giá USD cho giá trị tồn kho (Đưa Ending Inventory Value từ $20.4M về đúng ~$5.76M)',
           desc: 'Nhân tỷ giá USD cho cột inventory_amt và unhealthy_inventory_value ở các nước dùng ngoại tệ (Nhật JPY, Mexico MXN, Canada CAD...) trong bảng fact_market_demand, khắc phục triệt để lỗi cộng nguyên tiền bản địa làm phồng giá trị tồn kho.'
@@ -5091,6 +5126,13 @@ LEFT JOIN y4a_datamart.dim_product p ON a.sku = p.sku`
         }
       ],
       p7_spreetail: [
+        {
+          tag: 'Changed',
+          tagClass: 'tag-changed',
+          date: '2026-10-26',
+          title: 'Thay Net Revenue bằng Base Item Cost ($), thêm CVR % & In-Stock Rate (Network/Node), chuẩn hóa biểu đồ Monthly Sell-Through',
+          desc: 'Đổi thẻ số 03 sang Base Item Cost ($); bổ sung thẻ Conversion Rate % (Ad Orders / Clicks) ở Phần 1 và cặp thẻ In-Stock Rate (Network & Node) ở Phần 2; nâng cấp biểu đồ Monthly Sell-Through thành Cột chồng (On-Hand + Incoming) kết hợp đường Sell-Through 3M % tính theo Phương án A1 đồng bộ 100% logic Amazon.'
+        },
         {
           tag: 'Changed',
           tagClass: 'tag-changed',
